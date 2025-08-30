@@ -20,6 +20,11 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             {user ? (
               <>
+                <Link href="/my">
+                  <Button variant="ghost" size="sm">
+                    내 리스트
+                  </Button>
+                </Link>
                 <Link href="/create">
                   <Button variant="outline" size="sm">
                     <Plus className="w-4 h-4 mr-1" />
