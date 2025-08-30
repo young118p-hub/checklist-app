@@ -10,7 +10,7 @@ import { SITUATION_TEMPLATES, generateChecklistFromTemplate } from '@/lib/templa
 import { SituationTemplate } from '@/types'
 
 interface TemplateSelectorProps {
-  onSelectTemplate: (templateData: any) => void
+  onSelectTemplate: (templateData: unknown) => void
   onCancel: () => void
 }
 

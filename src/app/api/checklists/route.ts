@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         categoryId,
         items: {
-          create: items.map((item: any, index: number) => ({
+          create: items.map((item: { title: string; description?: string; quantity?: number; unit?: string; isCompleted?: boolean; order?: number }, index: number) => ({
             title: item.title,
             description: item.description,
             quantity: item.quantity,

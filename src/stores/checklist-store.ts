@@ -21,7 +21,7 @@ interface ChecklistState {
   setError: (error: string | null) => void
 }
 
-export const useChecklistStore = create<ChecklistState>((set, get) => ({
+export const useChecklistStore = create<ChecklistState>((set) => ({
   checklists: [],
   currentChecklist: null,
   loading: false,

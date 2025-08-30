@@ -138,7 +138,7 @@ export function getTemplate(templateId: string): SituationTemplate | undefined {
   return SITUATION_TEMPLATES.find(template => template.id === templateId)
 }
 
-export function calculateQuantity(item: any, peopleCount: number = 1): number {
+export function calculateQuantity(item: { baseQuantity?: number; multiplier?: boolean }, peopleCount: number = 1): number {
   if (!item.multiplier) return item.baseQuantity || 1
   return (item.baseQuantity || 1) * Math.max(1, peopleCount)
 }
@@ -146,7 +146,7 @@ export function calculateQuantity(item: any, peopleCount: number = 1): number {
 export function generateChecklistFromTemplate(
   templateId: string, 
   peopleCount: number = 1
-): { items: any[] } | null {
+): { items: { title: string; description?: string; quantity: number; unit?: string; order: number }[] } | null {
   const template = getTemplate(templateId)
   if (!template) return null
 

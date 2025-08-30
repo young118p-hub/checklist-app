@@ -21,8 +21,7 @@ export default function ChecklistPage() {
     fetchChecklist, 
     toggleItemComplete,
     updateItem,
-    deleteItem,
-    addItem
+    deleteItem
   } = useChecklistStore()
 
   const checklistId = params.id as string
@@ -41,7 +40,7 @@ export default function ChecklistPage() {
     }
   }
 
-  const handleUpdateItem = async (itemId: string, data: any) => {
+  const handleUpdateItem = async (itemId: string, data: { title?: string; description?: string; quantity?: number; unit?: string; isCompleted?: boolean }) => {
     await updateItem(itemId, data)
   }
 

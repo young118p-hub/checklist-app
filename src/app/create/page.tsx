@@ -24,12 +24,12 @@ export default function CreatePage() {
     return null
   }
 
-  const handleCreateChecklist = async (data: any) => {
+  const handleCreateChecklist = async (data: { title: string; description?: string; isTemplate?: boolean; isPublic?: boolean; peopleCount?: number; categoryId?: string; items: any[] }) => {
     await createChecklist(data)
     router.push('/')
   }
 
-  const handleTemplateSelect = (templateData: any) => {
+  const handleTemplateSelect = (_templateData: unknown) => {
     setMode('custom')
     // 템플릿 데이터를 폼에 전달하는 로직이 필요합니다
     // 실제 구현에서는 상태 관리를 통해 템플릿 데이터를 전달해야 합니다

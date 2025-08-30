@@ -40,7 +40,7 @@ export function CreateChecklistForm({
     setItems(prev => prev.filter((_, i) => i !== index))
   }
 
-  const updateItem = (index: number, field: keyof CreateChecklistItemData, value: any) => {
+  const updateItem = (index: number, field: keyof CreateChecklistItemData, value: string | number | undefined) => {
     setItems(prev => prev.map((item, i) => 
       i === index ? { ...item, [field]: value } : item
     ))
