@@ -1,9 +1,0 @@
-{
-  "functions": {
-    "app/**": {
-      "runtime": "nodejs20.x",
-      "regions": ["sin1"]
-    }
-  },
-  "regions": ["sin1"]
-}
