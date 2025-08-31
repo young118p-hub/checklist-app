@@ -34,9 +34,18 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
+    const authorization = request.headers.get('Authorization')
+    if (!authorization?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const token = authorization.slice(7)
+    const { data: { user }, error } = await supabase.auth.getUser(token)
     
-    if (!session?.user) {
+    if (error || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -53,7 +62,7 @@ export async function POST(request: NextRequest) {
         isTemplate: isTemplate || false,
         isPublic: isPublic || false,
         peopleCount,
-        userId: session.user.id,
+        userId: user.id,
         categoryId,
         items: {
           create: items.map((item: { title: string; description?: string; quantity?: number; unit?: string; isCompleted?: boolean; order?: number }, index: number) => ({

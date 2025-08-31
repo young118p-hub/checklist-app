@@ -16,7 +16,7 @@ export function SignupForm() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   
-  const { signUp } = useAuthStore()
+  const { signUp, signInWithProvider } = useAuthStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,6 +38,18 @@ export function SignupForm() {
     }
     
     setIsLoading(false)
+  }
+
+  const handleSocialLogin = async (provider: 'google' | 'naver' | 'kakao') => {
+    setIsLoading(true)
+    setError('')
+    
+    const result = await signInWithProvider(provider)
+    
+    if (result.error) {
+      setError(result.error)
+      setIsLoading(false)
+    }
   }
 
   if (success) {
@@ -62,6 +74,13 @@ export function SignupForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* 소셜 로그인 - 추후 커뮤니티 기능 추가 시 활성화 
+        <div className="space-y-3 mb-6">
+          카카오, 네이버, 구글 로그인 버튼들...
+        </div>
+        <div className="relative">구분선...</div>
+        */}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">이름</Label>

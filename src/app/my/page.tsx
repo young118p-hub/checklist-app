@@ -18,15 +18,8 @@ export default function MyChecklists() {
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    if (!user && !authLoading) {
-      router.push('/login')
-      return
-    }
-    
-    if (user) {
-      fetchChecklists()
-    }
-  }, [user, authLoading, fetchChecklists, router])
+    fetchChecklists()
+  }, [fetchChecklists])
 
   const filteredChecklists = checklists.filter(checklist =>
     checklist.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,20 +30,6 @@ export default function MyChecklists() {
     router.push(`/checklist/${id}`)
   }
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
-  }
 
   return (
     <div className="min-h-screen">

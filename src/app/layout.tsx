@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +15,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "체크리스트 - 상황별 준비물 관리",
-  description: "캠핑, 여행, 면접 등 다양한 상황에 맞는 체크리스트를 만들고 공유하세요",
+  title: "아맞다이거! - 깜빡할 뻔한 모든 것들",
+  description: "출근, 헬스장, 여행, 이사 등 모든 상황의 체크리스트. 로그인 없이 바로 사용하세요!",
+  manifest: "/manifest.json",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -31,6 +41,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
         </AuthProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth-store'
 import { useChecklistStore } from '@/stores/checklist-store'
 import { Navbar } from '@/components/layout/navbar'
 import { ChecklistItem } from '@/components/checklist/checklist-item'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Users, Calendar, Heart, MessageCircle, Star } from 'lucide-react'
+import { ArrowLeft, Users, Calendar, Heart, MessageCircle, Star, Plus } from 'lucide-react'
 
 export default function ChecklistPage() {
   const params = useParams()
@@ -20,11 +21,14 @@ export default function ChecklistPage() {
     loading, 
     fetchChecklist, 
     toggleItemComplete,
+    addItem,
     updateItem,
     deleteItem
   } = useChecklistStore()
 
   const checklistId = params.id as string
+  const [isAddingItem, setIsAddingItem] = useState(false)
+  const [newItemTitle, setNewItemTitle] = useState('')
 
   useEffect(() => {
     if (checklistId) {
@@ -48,6 +52,26 @@ export default function ChecklistPage() {
     await deleteItem(itemId)
   }
 
+  const handleAddItem = async () => {
+    if (!newItemTitle.trim() || !currentChecklist) return
+    
+    const newOrder = Math.max(...currentChecklist.items.map(item => item.order || 0), 0) + 1
+    
+    await addItem(checklistId, {
+      title: newItemTitle.trim(),
+      description: '',
+      quantity: 1,
+      unit: '',
+      isCompleted: false,
+      order: newOrder,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+    
+    setNewItemTitle('')
+    setIsAddingItem(false)
+  }
+
   if (loading || !currentChecklist) {
     return (
       <div className="min-h-screen">
@@ -61,7 +85,7 @@ export default function ChecklistPage() {
     )
   }
 
-  const isOwner = user?.id === currentChecklist.userId
+  const isOwner = !user || user?.id === currentChecklist.userId
   const completedItems = currentChecklist.items.filter(item => item.isCompleted).length
   const totalItems = currentChecklist.items.length
   const completionRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 0
@@ -189,6 +213,52 @@ export default function ChecklistPage() {
               {currentChecklist.items.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   아직 항목이 없습니다.
+                </div>
+              )}
+
+              {/* 항목 추가 섹션 */}
+              {isOwner && (
+                <div className="mt-6 pt-6 border-t">
+                  {isAddingItem ? (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="새 항목 제목을 입력하세요"
+                        value={newItemTitle}
+                        onChange={(e) => setNewItemTitle(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddItem()
+                          } else if (e.key === 'Escape') {
+                            setIsAddingItem(false)
+                            setNewItemTitle('')
+                          }
+                        }}
+                        autoFocus
+                        className="flex-1"
+                      />
+                      <Button onClick={handleAddItem} disabled={!newItemTitle.trim()}>
+                        추가
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsAddingItem(false)
+                          setNewItemTitle('')
+                        }}
+                      >
+                        취소
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsAddingItem(true)}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      새 항목 추가
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
