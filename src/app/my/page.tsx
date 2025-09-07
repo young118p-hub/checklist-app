@@ -14,7 +14,7 @@ import Link from 'next/link'
 export default function MyChecklists() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuthStore()
-  const { checklists, loading, fetchChecklists } = useChecklistStore()
+  const { checklists, loading, fetchChecklists, deleteChecklist } = useChecklistStore()
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
@@ -30,9 +30,15 @@ export default function MyChecklists() {
     router.push(`/checklist/${id}`)
   }
 
+  const handleDeleteChecklist = async (id: string) => {
+    await deleteChecklist(id)
+    // 목록 다시 불러오기
+    fetchChecklists()
+  }
+
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -41,7 +47,7 @@ export default function MyChecklists() {
             <p className="text-gray-600 mt-1">나만의 체크리스트를 관리해보세요</p>
           </div>
           <Link href="/">
-            <Button variant="outline">
+            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
               홈으로 돌아가기
             </Button>
           </Link>
@@ -83,6 +89,8 @@ export default function MyChecklists() {
                 key={checklist.id}
                 checklist={checklist}
                 onView={handleViewChecklist}
+                onDelete={handleDeleteChecklist}
+                showDelete={true}
               />
             ))}
           </div>

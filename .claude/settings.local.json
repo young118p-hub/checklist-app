@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/My/Desktop/git/**)",
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run web:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm start)",
+      "Bash(npx expo start:*)",
+      "Bash(timeout 20 npx expo start --web)",
+      "Bash(npx expo export:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

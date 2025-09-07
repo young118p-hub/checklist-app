@@ -91,7 +91,7 @@ export default function ChecklistPage() {
   const completionRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 0
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
@@ -163,34 +163,36 @@ export default function ChecklistPage() {
             </div>
           </div>
 
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-lg">진행 상황</CardTitle>
+          <Card className="mb-8 border-0 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
+              <CardTitle className="text-lg font-bold text-gray-900">진행 상황</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+            <CardContent className="bg-white">
+              <div className="space-y-3 pt-4">
+                <div className="flex justify-between text-sm font-medium">
                   <span>완료된 항목</span>
-                  <span>{completedItems}/{totalItems}</span>
+                  <span className="bg-red-50 px-3 py-1 rounded-full text-red-600">{completedItems}/{totalItems}</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
                   <div 
-                    className="bg-blue-500 h-3 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-red-400 to-red-500 h-4 rounded-full transition-all duration-500 shadow-sm"
                     style={{ width: `${completionRate}%` }}
                   />
                 </div>
-                <div className="text-right text-sm text-gray-600">
-                  {Math.round(completionRate)}% 완료
+                <div className="text-right">
+                  <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent text-lg font-bold">
+                    {Math.round(completionRate)}% 완료
+                  </span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>체크리스트 항목</CardTitle>
-            <CardDescription>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
+            <CardTitle className="text-xl font-bold text-gray-900">체크리스트 항목</CardTitle>
+            <CardDescription className="text-gray-600">
               항목을 클릭하여 완료 표시를 하세요
             </CardDescription>
           </CardHeader>
@@ -236,7 +238,7 @@ export default function ChecklistPage() {
                         autoFocus
                         className="flex-1"
                       />
-                      <Button onClick={handleAddItem} disabled={!newItemTitle.trim()}>
+                      <Button onClick={handleAddItem} disabled={!newItemTitle.trim()} className="bg-red-500 hover:bg-red-600 text-white">
                         추가
                       </Button>
                       <Button 
@@ -245,6 +247,7 @@ export default function ChecklistPage() {
                           setIsAddingItem(false)
                           setNewItemTitle('')
                         }}
+                        className="border-red-200 text-red-600 hover:bg-red-50"
                       >
                         취소
                       </Button>
@@ -253,7 +256,7 @@ export default function ChecklistPage() {
                     <Button 
                       variant="outline" 
                       onClick={() => setIsAddingItem(true)}
-                      className="w-full"
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       새 항목 추가

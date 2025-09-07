@@ -69,19 +69,19 @@ export const SITUATION_TEMPLATES: SituationTemplate[] = [
       { title: '매트', description: '바닥 매트', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '블루투스 스피커', description: '🎵 캠핑 필수템! 분위기 UP', baseQuantity: 1, unit: '개' },
       { title: '보조배터리', description: '🔋 20000mAh 이상, 핸드폰 충전용', baseQuantity: 1, unit: '개' },
-      { title: '고기', description: '🥩 바베큐용 고기 (삼겹살, 갈비)', baseQuantity: 500, unit: 'g', multiplier: 1 },
-      { title: '쌈장', description: '고기용 쌈장', baseQuantity: 1, unit: '개' },
-      { title: '상추/깻잎', description: '🥬 쌈 채소', baseQuantity: 1, unit: '봉지' },
+      { title: '고기', description: '🥩 바베큐용 고기 (남성 300g, 여성 200g 평균)', baseQuantity: 250, unit: 'g', multiplier: 1 },
+      { title: '쌈장', description: '🥄 고기용 쌈장 (8인까지 충분)', baseQuantity: 1, unit: '개' },
+      { title: '상추/깻잎', description: '🥬 쌈 채소 (4인 기준)', baseQuantity: 2, unit: '봉지' },
       { title: '가위', description: '✂️ 고기용 가위', baseQuantity: 1, unit: '개' },
       { title: '집게', description: '바베큐 집게', baseQuantity: 2, unit: '개' },
       { title: '그릴', description: '바베큐 그릴', baseQuantity: 1, unit: '개' },
       { title: '숯', description: '바베큐용 숯', baseQuantity: 3, unit: 'kg' },
       { title: '착화제', description: '숯 점화용', baseQuantity: 1, unit: '개' },
-      { title: '물', description: '식수', baseQuantity: 2, unit: 'L', multiplier: 1 },
+      { title: '물', description: '💧 식수 (남성 1.3L, 여성 1.1L 평균)', baseQuantity: 1.2, unit: 'L', multiplier: 1 },
       { title: '랜턴', description: '🏮 LED 랜턴', baseQuantity: 1, unit: '개' },
       { title: '헤드랜턴', description: '개인용 헤드랜턴', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '모기 퇴치제', description: '🦟 여름 캠핑 필수템', baseQuantity: 1, unit: '개' },
-      { title: '젖은 물티슈', description: '🧻 손 씻기 어려운 환경', baseQuantity: 3, unit: '팩' },
+      { title: '젖은 물티슈', description: '🧻 손 씻기 어려운 환경 (1박2일 기준)', baseQuantity: 1, unit: '팩' },
       { title: '캠핑 의자', description: '🪑 접이식 의자', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '아이스박스', description: '🧊 음료, 고기 보관용', baseQuantity: 1, unit: '개' },
       { title: '얼음', description: '🧊 아이스박스용', baseQuantity: 3, unit: 'kg' },
@@ -98,8 +98,8 @@ export const SITUATION_TEMPLATES: SituationTemplate[] = [
       { title: '세면도구', description: '칫솔, 치약, 샴푸 등', baseQuantity: 1, unit: '세트', multiplier: 1 },
       { title: '슬리퍼', description: '개인용 슬리퍼', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '여벌 옷', description: '갈아입을 옷', baseQuantity: 2, unit: '벌', multiplier: 1 },
-      { title: '간식', description: '함께 나눠먹을 간식', baseQuantity: 3, unit: '개' },
-      { title: '음료', description: '시원한 음료', baseQuantity: 6, unit: '개' },
+      { title: '간식', description: '🍪 함께 나눠먹을 간식 (과자, 과일 등)', baseQuantity: 5, unit: '개' },
+      { title: '음료', description: '🥤 시원한 음료 (1인당 2개)', baseQuantity: 2, unit: '개', multiplier: 1 },
       { title: '게임', description: '보드게임 또는 카드게임', baseQuantity: 2, unit: '개' },
       { title: '충전기', description: '휴대폰 충전기', baseQuantity: 1, unit: '개', multiplier: 1 },
     ]
@@ -131,8 +131,8 @@ export const SITUATION_TEMPLATES: SituationTemplate[] = [
       { title: '등산화', description: '미끄럼 방지 등산화', baseQuantity: 1, unit: '켤레', multiplier: 1 },
       { title: '배낭', description: '등산용 배낭', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '등산복', description: '땀 배출이 잘 되는 옷', baseQuantity: 1, unit: '벌', multiplier: 1 },
-      { title: '물', description: '충분한 수분', baseQuantity: 1.5, unit: 'L', multiplier: 1 },
-      { title: '간식', description: '에너지바, 견과류 등', baseQuantity: 3, unit: '개', multiplier: 1 },
+      { title: '물', description: '💧 등산용 충분한 수분 (남성 1.8L, 여성 1.3L)', baseQuantity: 1.5, unit: 'L', multiplier: 1 },
+      { title: '간식', description: '🍫 에너지바, 견과류 (남성 4개, 여성 2개)', baseQuantity: 3, unit: '개', multiplier: 1 },
       { title: '등산스틱', description: '트레킹 폴', baseQuantity: 2, unit: '개', multiplier: 1 },
       { title: '모자', description: '햇빛 차단용', baseQuantity: 1, unit: '개', multiplier: 1 },
       { title: '선크림', description: 'SPF 50+', baseQuantity: 1, unit: '개' },
@@ -171,7 +171,7 @@ export const SITUATION_TEMPLATES: SituationTemplate[] = [
       { title: '속건 티셔츠', description: '👕 습도 90% 환경, 빨래 3일 안마름', baseQuantity: 5, unit: '개', multiplier: 1 },
       { title: '얇은 긴팔', description: '🧥 에어컨 너무 추움, 냉방병 주의', baseQuantity: 2, unit: '개', multiplier: 1 },
       { title: '샌들', description: '👟 비 많음, 빨리 마르는 소재', baseQuantity: 1, unit: '켤레', multiplier: 1 },
-      { title: '현금 USD', description: '💵 카드 안되는 곳 많음, 달러 준비', baseQuantity: 200, unit: 'USD', multiplier: 1 },
+      { title: '현금 USD', description: '💵 카드 안되는 곳 많음, 달러 준비 (1인당 200불)', baseQuantity: 200, unit: 'USD', multiplier: 1 },
       { title: '물티슈', description: '🧻 화장실 휴지 없는 곳 많음. 대형 팩으로!', baseQuantity: 10, unit: '팩' },
       { title: '해외여행보험', description: '🏥 의료비 비쌈, 필수 가입. 트리플에서 할인 혜택', baseQuantity: 1, unit: '개' },
     ]
@@ -258,6 +258,83 @@ export const SITUATION_TEMPLATES: SituationTemplate[] = [
       { title: '하객 리스트', description: '📋 초대할 하객 명단', baseQuantity: 1, unit: '개' },
       { title: '혼인신고서', description: '📄 구청/주민센터 제출', baseQuantity: 1, unit: '통' },
     ]
+  },
+  // === 한국 특화 템플릿 ===
+  {
+    id: 'csat_exam',
+    name: '수능 준비',
+    description: '📝 수능 당일 필수 준비물',
+    category: '학습',
+    peopleMultiplier: false,
+    items: [
+      { title: '수험표', description: '📄 절대 필수! 복사본도 준비', baseQuantity: 2, unit: '매' },
+      { title: '신분증', description: '🆔 주민등록증/학생증', baseQuantity: 1, unit: '개' },
+      { title: '컴퓨터용 사인펜', description: '✏️ 검은색, 0.5mm', baseQuantity: 3, unit: '개' },
+      { title: '연필', description: '✏️ 2B 연필 (샤프 금지)', baseQuantity: 5, unit: '개' },
+      { title: '지우개', description: '🧽 깨끗한 지우개', baseQuantity: 2, unit: '개' },
+      { title: '시계', description: '⏰ 아날로그 시계 (디지털 불가)', baseQuantity: 1, unit: '개' },
+      { title: '휴대용 연필깎이', description: '✂️ 소음 적은 것', baseQuantity: 1, unit: '개' },
+      { title: '마스크', description: '😷 개인 방역용', baseQuantity: 2, unit: '개' },
+      { title: '초콜릿', description: '🍫 당분 보충용 (시끄럽지 않은 것)', baseQuantity: 2, unit: '개' },
+      { title: '물', description: '💧 생수 (라벨 제거)', baseQuantity: 1, unit: '개' },
+    ]
+  },
+  {
+    id: 'job_interview_korea',
+    name: '한국 취업 면접',
+    description: '👔 한국 기업 면접 특화 준비물',
+    category: '업무',
+    peopleMultiplier: false,
+    items: [
+      { title: '정장', description: '👔 네이비/차콜 정장 (다림질 필수)', baseQuantity: 1, unit: '벌' },
+      { title: '구두', description: '👞 검은색 정장 구두 (광택)', baseQuantity: 1, unit: '켤레' },
+      { title: '이력서', description: '📄 한국형 이력서 (사진 부착)', baseQuantity: 5, unit: '부' },
+      { title: '자기소개서', description: '📋 회사별 맞춤 작성', baseQuantity: 3, unit: '부' },
+      { title: '졸업증명서', description: '🎓 원본 + 복사본', baseQuantity: 2, unit: '부' },
+      { title: '성적증명서', description: '📊 대학 성적표', baseQuantity: 2, unit: '부' },
+      { title: '자격증 사본', description: '🏆 토익, 컴활 등', baseQuantity: 3, unit: '부' },
+      { title: '증명사진', description: '📸 여분 (3x4cm)', baseQuantity: 5, unit: '매' },
+      { title: '펜', description: '🖊️ 검은색 볼펜', baseQuantity: 2, unit: '개' },
+      { title: '손수건', description: '🤧 긴장 시 땀 닦기용', baseQuantity: 1, unit: '개' },
+    ]
+  },
+  {
+    id: 'korean_festival',
+    name: '한국 축제 (벚꽃, 불꽃축제)',
+    description: '🌸 한국 봄가을 축제 준비물',
+    category: '문화',
+    peopleMultiplier: true,
+    items: [
+      { title: '돗자리', description: '🏞️ 방수 돗자리 (앉을 자리 확보)', baseQuantity: 1, unit: '개' },
+      { title: '간식', description: '🍪 김밥, 과자 등', baseQuantity: 3, unit: '개', multiplier: 1 },
+      { title: '음료', description: '🥤 시원한 음료', baseQuantity: 2, unit: '개', multiplier: 1 },
+      { title: '휴지', description: '🧻 물티슈 + 휴지', baseQuantity: 3, unit: '팩' },
+      { title: '쓰레기봉투', description: '🗑️ 뒷정리용', baseQuantity: 3, unit: '개' },
+      { title: '카메라/핸드폰', description: '📱 인생샷 촬영용', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '보조배터리', description: '🔋 사진 많이 찍을 예정', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '얇은 외투', description: '🧥 저녁 기온 하락 대비', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '방석/쿠션', description: '🪑 장시간 앉기 편한', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '선크림', description: '☀️ 야외 활동용', baseQuantity: 1, unit: '개' },
+    ]
+  },
+  {
+    id: 'korean_hiking_mountain',
+    name: '한국 산 등산 (북한산, 설악산)',
+    description: '⛰️ 한국 명산 등반 준비물',
+    category: '아웃도어', 
+    peopleMultiplier: true,
+    items: [
+      { title: '등산화', description: '👟 발목 보호 등산화', baseQuantity: 1, unit: '켤레', multiplier: 1 },
+      { title: '등산복', description: '👕 속건성 소재', baseQuantity: 1, unit: '벌', multiplier: 1 },
+      { title: '백팩', description: '🎒 20-30L 등산용', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '물', description: '💧 충분한 수분 (500ml x 3)', baseQuantity: 1.5, unit: 'L', multiplier: 1 },
+      { title: '김밥', description: '🍙 한국 등산 필수 도시락', baseQuantity: 1, unit: '줄', multiplier: 1 },
+      { title: '막걸리', description: '🍶 정상 인증용 (선택사항)', baseQuantity: 1, unit: '병' },
+      { title: '컵라면', description: '🍜 산장/대피소용', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '등산스틱', description: '🦯 무릎 보호용', baseQuantity: 2, unit: '개', multiplier: 1 },
+      { title: '헤드랜턴', description: '🔦 일찍 어두워지는 계절', baseQuantity: 1, unit: '개', multiplier: 1 },
+      { title: '구급약', description: '🩹 밴드, 파스 등', baseQuantity: 1, unit: '세트' },
+    ]
   }
 ]
 
@@ -265,7 +342,7 @@ export function getTemplate(templateId: string): SituationTemplate | undefined {
   return SITUATION_TEMPLATES.find(template => template.id === templateId)
 }
 
-export function calculateQuantity(item: { baseQuantity?: number; multiplier?: boolean }, peopleCount: number = 1): number {
+export function calculateQuantity(item: { baseQuantity?: number; multiplier?: number }, peopleCount: number = 1): number {
   if (!item.multiplier) return item.baseQuantity || 1
   return (item.baseQuantity || 1) * Math.max(1, peopleCount)
 }
