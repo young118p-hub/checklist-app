@@ -10,7 +10,10 @@
       "Bash(npx expo start:*)",
       "Bash(timeout 20 npx expo start --web)",
       "Bash(npx expo export:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run dev:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
