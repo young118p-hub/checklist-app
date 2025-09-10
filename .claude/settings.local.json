@@ -13,7 +13,11 @@
       "WebSearch",
       "Bash(npm run dev:*)",
       "Bash(find:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(npx react-native:*)",
+      "Bash(npx @react-native-community/cli:*)"
     ],
     "deny": [],
     "ask": []
