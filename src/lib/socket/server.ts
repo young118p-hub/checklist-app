@@ -3,6 +3,8 @@ import { createServer } from 'http'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import { nicknameManager } from '@/lib/collaboration/nickname-manager'
+import { socketAuthMiddleware, AuthenticatedSocket, checkCollaborationPermission, rateLimitMiddleware } from './auth-middleware'
+import { logger } from '@/lib/utils/logger'
 
 // Socket.io 이벤트 타입 정의
 interface ServerToClientEvents {
@@ -72,22 +74,29 @@ export const initSocketServer = (server: any) => {
     transports: ['websocket', 'polling']
   })
 
-  io.on('connection', (socket) => {
-    console.log(`🔌 Socket connected: ${socket.id}`)
+  // 인증 미들웨어 적용
+  io.use(socketAuthMiddleware)
+
+  io.on('connection', (socket: AuthenticatedSocket) => {
+    logger.debug('Socket connected', { socketId: socket.id }, socket.userId)
 
     // 협업 참여
-    socket.on('join-collaboration', async (data) => {
-      const { checklistId, shareCode, user } = data
+    socket.on('join-collaboration', rateLimitMiddleware(socket, 10, 60000), async (data) => {
+      const { checklistId, shareCode } = data
       
       try {
-        // 체크리스트 유효성 검증
+        // 체크리스트 유효성 검증 (링크 만료 포함)
         const checklist = await prisma.checklist.findFirst({
           where: {
             OR: [
               { id: checklistId },
               { shareCode: shareCode }
             ],
-            isCollaborative: true
+            isCollaborative: true,
+            OR: [
+              { linkExpiresAt: null }, // 만료일이 없거나
+              { linkExpiresAt: { gt: new Date() } } // 만료되지 않은 것
+            ]
           }
         })
 
@@ -100,16 +109,32 @@ export const initSocketServer = (server: any) => {
           return
         }
 
-        // 닉네임 충돌 해결
+        // 협업 권한 확인
+        const permissionCheck = await checkCollaborationPermission(
+          socket.userId, 
+          checklist.id, 
+          ['READ']
+        )
+
+        if (!permissionCheck.hasPermission) {
+          socket.emit('notification', {
+            type: 'error',
+            title: '권한 없음',
+            message: '이 협업에 참여할 권한이 없습니다.'
+          })
+          return
+        }
+
+        // 닉네임 충돌 해결 (인증된 사용자 정보 사용)
         const nicknameResolution = nicknameManager.addNicknameToCollaboration(
           checklist.id,
-          user.id,
-          user.nickname
+          socket.userId,
+          socket.userInfo.nickname
         )
 
         // 해결된 닉네임으로 사용자 정보 업데이트
         const resolvedUser = {
-          ...user,
+          ...socket.userInfo,
           nickname: nicknameResolution.resolvedNickname,
           isOnline: true
         }
@@ -132,7 +157,7 @@ export const initSocketServer = (server: any) => {
         socket.join(checklist.id)
         
         // 온라인 사용자 추가 (해결된 닉네임 사용)
-        onlineUsers.set(user.id, {
+        onlineUsers.set(socket.userId, {
           socketId: socket.id,
           user: resolvedUser,
           checklistId: checklist.id,
@@ -143,14 +168,14 @@ export const initSocketServer = (server: any) => {
         if (!collaborationRooms.has(checklist.id)) {
           collaborationRooms.set(checklist.id, new Set())
         }
-        collaborationRooms.get(checklist.id)!.add(user.id)
+        collaborationRooms.get(checklist.id)!.add(socket.userId)
 
         // DB에 참여 기록 (해결된 닉네임 사용)
         await prisma.collaboration.upsert({
           where: {
             checklistId_userId: {
               checklistId: checklist.id,
-              userId: user.id
+              userId: socket.userId
             }
           },
           update: {
@@ -160,10 +185,10 @@ export const initSocketServer = (server: any) => {
           },
           create: {
             checklistId: checklist.id,
-            userId: user.id,
+            userId: socket.userId,
             role: 'MEMBER',
             guestNickname: resolvedUser.nickname,
-            guestColor: resolvedUser.color
+            guestColor: resolvedUser.userType === 'REGISTERED' ? '#3B82F6' : '#10B981'
           }
         })
 
@@ -178,10 +203,15 @@ export const initSocketServer = (server: any) => {
         
         socket.emit('users-online', roomUsers)
 
-        console.log(`👥 ${resolvedUser.nickname} joined collaboration ${checklist.title}${nicknameResolution.conflictResolved ? ' (nickname resolved)' : ''}`)
+        logger.info('User joined collaboration', {
+          nickname: resolvedUser.nickname,
+          checklistTitle: checklist.title,
+          nicknameResolved: nicknameResolution.conflictResolved,
+          onlineCount
+        }, socket.userId)
 
       } catch (error) {
-        console.error('❌ Join collaboration error:', error)
+        logger.error('Join collaboration error', { error: error instanceof Error ? error.message : 'Unknown error' }, socket.userId)
         socket.emit('notification', {
           type: 'error',
           title: '참여 실패',
@@ -191,19 +221,54 @@ export const initSocketServer = (server: any) => {
     })
 
     // 체크리스트 아이템 토글
-    socket.on('toggle-item', async (data) => {
+    socket.on('toggle-item', rateLimitMiddleware(socket, 20, 60000), async (data) => {
       const { itemId, isCompleted } = data
-      const userInfo = getUserBySocketId(socket.id)
       
-      if (!userInfo) return
-
       try {
+        // 아이템 존재 확인 및 체크리스트 정보 조회
+        const item = await prisma.checklistItem.findUnique({
+          where: { id: itemId },
+          include: {
+            checklist: {
+              select: {
+                id: true,
+                userId: true,
+                isCollaborative: true
+              }
+            }
+          }
+        })
+
+        if (!item) {
+          socket.emit('notification', {
+            type: 'error',
+            title: '아이템 없음',
+            message: '존재하지 않는 아이템입니다.'
+          })
+          return
+        }
+
+        // 권한 확인
+        const permissionCheck = await checkCollaborationPermission(
+          socket.userId, 
+          item.checklist.id, 
+          ['WRITE']
+        )
+
+        if (!permissionCheck.hasPermission) {
+          socket.emit('notification', {
+            type: 'error',
+            title: '권한 없음',
+            message: '이 아이템을 수정할 권한이 없습니다.'
+          })
+          return
+        }
         // DB 업데이트
         const updatedItem = await prisma.checklistItem.update({
           where: { id: itemId },
           data: {
             isCompleted,
-            checkedById: isCompleted ? userInfo.user.id : null,
+            checkedById: isCompleted ? socket.userId : null,
             checkedAt: isCompleted ? new Date() : null
           }
         })
@@ -212,37 +277,42 @@ export const initSocketServer = (server: any) => {
         await prisma.checkHistory.create({
           data: {
             itemId,
-            checklistId: userInfo.checklistId,
-            userId: userInfo.user.id,
+            checklistId: item.checklist.id,
+            userId: socket.userId,
             action: isCompleted ? 'CHECKED' : 'UNCHECKED',
             timestamp: new Date()
           }
         })
 
         // 방의 모든 사용자에게 브로드캐스트
-        io.to(userInfo.checklistId).emit('item-checked', {
+        io.to(item.checklist.id).emit('item-checked', {
           itemId,
           isCompleted,
-          checkedBy: userInfo.user,
+          checkedBy: socket.userInfo,
           timestamp: new Date()
         })
 
         // 체크리스트 완료 확인
         const checklist = await prisma.checklist.findUnique({
-          where: { id: userInfo.checklistId },
+          where: { id: item.checklist.id },
           include: {
             items: true
           }
         })
 
         if (checklist && checklist.items.every(item => item.isCompleted)) {
-          io.to(userInfo.checklistId).emit('collaboration-completed', {
-            checklistId: userInfo.checklistId,
-            completedBy: userInfo.user
+          io.to(item.checklist.id).emit('collaboration-completed', {
+            checklistId: item.checklist.id,
+            completedBy: socket.userInfo
           })
         }
 
-        console.log(`✅ ${userInfo.user.nickname} ${isCompleted ? 'checked' : 'unchecked'} item ${itemId}`)
+        logger.debug('Item toggled', {
+          nickname: socket.userInfo.nickname,
+          itemId,
+          isCompleted,
+          action: isCompleted ? 'checked' : 'unchecked'
+        }, socket.userId)
 
       } catch (error) {
         console.error('❌ Toggle item error:', error)

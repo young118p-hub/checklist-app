@@ -23,6 +23,12 @@ model User {
   sessionToken String?  @unique  // 임시 사용자용
   expiresAt    DateTime? // 임시 사용자 만료일
   lastActiveAt DateTime @default(now())
+  
+  // 보안 강화 필드들
+  friendCode   String?  @unique  // 안전한 친구 코드
+  failedLoginAttempts Int @default(0)
+  lockedUntil  DateTime? // 계정 잠금 해제 시간
+  lastLoginIp  String?   // 마지막 로그인 IP (보안 모니터링용)
 
   // 기존 관계들
   checklists     Checklist[]
