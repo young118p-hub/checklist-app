@@ -102,11 +102,11 @@ export function CreateChecklistForm({
 
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="public"
+              id="collaborative"
               checked={isPublic}
               onCheckedChange={setIsPublic}
             />
-            <Label htmlFor="public">다른 사람과 공유</Label>
+            <Label htmlFor="collaborative">친구들과 실시간 협업</Label>
           </div>
 
           <div className="space-y-2">

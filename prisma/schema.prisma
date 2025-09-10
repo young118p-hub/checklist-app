@@ -9,16 +9,33 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
+  email     String?   @unique  // 이제 선택사항
+  phone     String?   @unique  // 휴대폰 인증용
   name      String?
+  nickname  String    // 협업용 닉네임 (필수)
   avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 사용자 타입 관련
+  userType     UserType @default(GUEST)
+  isVerified   Boolean  @default(false)
+  sessionToken String?  @unique  // 임시 사용자용
+  expiresAt    DateTime? // 임시 사용자 만료일
+  lastActiveAt DateTime @default(now())
+
+  // 기존 관계들
   checklists     Checklist[]
   checklistLikes ChecklistLike[]
   reviews        Review[]
   comments       Comment[]
+
+  // 협업 관련 새 관계들
+  friendsRequested  Friendship[] @relation("FriendshipRequester") 
+  friendsReceived   Friendship[] @relation("FriendshipReceived")
+  collaborations    Collaboration[]
+  checkHistories    CheckHistory[]
+  notifications     Notification[]
 
   @@map("users")
 }
@@ -45,15 +62,28 @@ model Checklist {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // 협업 관련 필드들
+  isCollaborative Boolean  @default(false)
+  shareCode       String?  @unique  // "CAM123" 같은 짧은 코드
+  shareUrl        String?  @unique  // 전체 공유 URL
+  maxCollaborators Int     @default(10)
+  linkExpiresAt   DateTime? // 링크 만료일
+
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
+  // 기존 관계들
   items    ChecklistItem[]
   likes    ChecklistLike[]
   reviews  Review[]
   comments Comment[]
+
+  // 새 협업 관계들
+  collaborations Collaboration[]
+  checkHistories CheckHistory[]
+  notifications  Notification[]
 
   @@map("checklists")
 }
@@ -67,8 +97,16 @@ model ChecklistItem {
   isCompleted Boolean @default(false)
   order       Int
 
+  // 협업 관련 필드들
+  checkedBy       User?     @relation("CheckedByUser", fields: [checkedById], references: [id])
+  checkedById     String?
+  checkedAt       DateTime?
+  
   checklistId String
   checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  
+  // 새 관계들
+  checkHistories CheckHistory[]
 
   @@map("checklist_items")
 }
@@ -113,4 +151,124 @@ model Comment {
   checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
 
   @@map("comments")
+}
+
+// 친구 관계 테이블
+model Friendship {
+  id            String   @id @default(cuid())
+  requesterId   String
+  receiverId    String
+  status        FriendshipStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  requester     User     @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  receiver      User     @relation("FriendshipReceived", fields: [receiverId], references: [id])
+  
+  @@unique([requesterId, receiverId])
+  @@map("friendships")
+}
+
+// 체크리스트 협업자들
+model Collaboration {
+  id            String   @id @default(cuid())
+  checklistId   String
+  userId        String
+  role          CollaborationRole @default(MEMBER)
+  permissions   CollaborationPermission[] @default([READ, WRITE])
+  joinedAt      DateTime @default(now())
+  lastActiveAt  DateTime @default(now())
+  isActive      Boolean  @default(true)
+  
+  // 임시 사용자 정보 (닉네임만으로 참여한 경우)
+  guestNickname String?
+  guestColor    String?
+  sessionId     String?
+  
+  checklist     Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id])
+  
+  @@unique([checklistId, userId])
+  @@map("collaborations")
+}
+
+// 체크 히스토리 (누가 언제 체크했는지)
+model CheckHistory {
+  id          String   @id @default(cuid())
+  itemId      String
+  checklistId String
+  userId      String
+  action      CheckAction
+  timestamp   DateTime @default(now())
+  previousValue String? // 이전 값 저장
+  newValue      String? // 새 값 저장
+  
+  item        ChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  checklist   Checklist     @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+  
+  @@map("check_histories")
+}
+
+// 실시간 알림 시스템
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  checklistId String?
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?    // 추가 데이터 (체크한 아이템 정보 등)
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id])
+  checklist   Checklist? @relation(fields: [checklistId], references: [id])
+  
+  @@map("notifications")
+}
+
+// Enum 정의들
+enum UserType {
+  GUEST        // 닉네임만 (임시)
+  REGISTERED   // 휴대폰 인증 (정식)
+  PREMIUM      // 유료 (향후)
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+enum CollaborationRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum CollaborationPermission {
+  READ
+  WRITE
+  DELETE
+  INVITE
+  MANAGE
+}
+
+enum CheckAction {
+  CHECKED
+  UNCHECKED
+  ADDED
+  REMOVED
+  EDITED
+}
+
+enum NotificationType {
+  FRIEND_REQUEST
+  COLLABORATION_INVITE
+  ITEM_CHECKED
+  CHECKLIST_COMPLETED
+  MENTION
 }

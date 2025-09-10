@@ -17,7 +17,8 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(npx react-native:*)",
-      "Bash(npx @react-native-community/cli:*)"
+      "Bash(npx @react-native-community/cli:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
