@@ -12,6 +12,9 @@ import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TemplateSelectionScreen } from './src/screens/TemplateSelectionScreen';
 import { ChecklistDetailScreen } from './src/screens/ChecklistDetailScreen';
+import { AuthScreen } from './src/screens/AuthScreen';
+import { FriendSystemScreen } from './src/screens/FriendSystemScreen';
+import { MyChecklistsScreen } from './src/screens/MyChecklistsScreen';
 
 const Stack = createStackNavigator();
 
@@ -26,7 +29,7 @@ function App() {
       />
       <NavigationContainer>
         <Stack.Navigator
-          initialRouteName="TemplateSelection"
+          initialRouteName="Auth"
           screenOptions={{
             headerStyle: {
               backgroundColor: '#dc2626',
@@ -38,10 +41,26 @@ function App() {
           }}
         >
           <Stack.Screen 
+            name="Auth" 
+            component={AuthScreen}
+            options={{ 
+              title: '아맞다이거! 📋',
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen 
             name="TemplateSelection" 
             component={TemplateSelectionScreen}
             options={{ 
-              title: '아맞다이거! 📋',
+              title: '템플릿 선택',
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen 
+            name="MyChecklists" 
+            component={MyChecklistsScreen}
+            options={{ 
+              title: '내 체크리스트',
               headerTitleAlign: 'center',
             }}
           />
@@ -49,6 +68,14 @@ function App() {
             name="ChecklistDetail" 
             component={ChecklistDetailScreen}
             options={{ 
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen 
+            name="Friends" 
+            component={FriendSystemScreen}
+            options={{ 
+              title: '친구 및 협업',
               headerTitleAlign: 'center',
             }}
           />

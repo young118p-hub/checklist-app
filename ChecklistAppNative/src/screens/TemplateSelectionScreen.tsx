@@ -7,10 +7,13 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SITUATION_TEMPLATES } from '../lib/templates';
 import { getSmartRecommendations, UserContext } from '../lib/recommendations';
 import { SituationTemplate } from '../types';
+import { useChecklistStore } from '../stores/checklistStore';
+import { useAuthStore } from '../stores/authStore';
 
 interface TemplateSelectionScreenProps {
   navigation: any;
@@ -26,6 +29,9 @@ export const TemplateSelectionScreen: React.FC<TemplateSelectionScreenProps> = (
     additionalItems: any[];
     reasoning: string;
   }>({ templates: [], additionalItems: [], reasoning: '' });
+
+  const { createChecklist, loading } = useChecklistStore();
+  const { user, upgradeGuestToRegistered } = useAuthStore();
 
   // 스마트 추천 시스템 초기화
   useEffect(() => {
@@ -64,21 +70,100 @@ export const TemplateSelectionScreen: React.FC<TemplateSelectionScreenProps> = (
     return 'winter';
   };
 
+  const showUpgradeForm = () => {
+    Alert.prompt(
+      '이메일 입력',
+      '업그레이드할 계정의 이메일을 입력하세요',
+      [
+        { text: '취소', style: 'cancel' },
+        { 
+          text: '확인', 
+          onPress: (email) => {
+            if (email) {
+              Alert.prompt(
+                '비밀번호 입력',
+                '계정의 비밀번호를 입력하세요',
+                [
+                  { text: '취소', style: 'cancel' },
+                  { 
+                    text: '업그레이드', 
+                    onPress: async (password) => {
+                      if (password) {
+                        const result = await upgradeGuestToRegistered(email, password);
+                        if (result.error) {
+                          Alert.alert('오류', result.error);
+                        } else {
+                          Alert.alert('성공', '계정이 업그레이드되었습니다!');
+                        }
+                      }
+                    }
+                  }
+                ],
+                'secure-text'
+              );
+            }
+          }
+        }
+      ],
+      'plain-text'
+    );
+  };
+
   const handleTemplateSelection = (template: SituationTemplate) => {
     setSelectedTemplate(template);
   };
 
-  const handleCreateChecklist = () => {
+  const handleCreateChecklist = async () => {
     if (!selectedTemplate) {
       Alert.alert('알림', '템플릿을 선택해주세요.');
       return;
     }
 
-    // 체크리스트 생성 로직
-    navigation.navigate('ChecklistDetail', {
-      templateId: selectedTemplate.id,
-      peopleCount: parseInt(peopleCount) || 1,
-    });
+    const people = parseInt(peopleCount);
+    if (isNaN(people) || people < 1 || people > 100) {
+      Alert.alert('알림', '인원수는 1명에서 100명 사이로 입력해주세요.');
+      return;
+    }
+
+    try {
+      // 템플릿으로부터 체크리스트 생성
+      const checklistData = {
+        title: selectedTemplate.name,
+        description: selectedTemplate.description,
+        isTemplate: false,
+        isPublic: false,
+        peopleCount: people,
+        userId: user?.id,
+        items: selectedTemplate.items.map((item, index) => ({
+          title: item.title,
+          description: item.description || '',
+          quantity: selectedTemplate.peopleMultiplier 
+            ? (item.baseQuantity || 1) * people 
+            : (item.baseQuantity || 1),
+          unit: item.unit || '',
+          order: index
+        }))
+      };
+
+      const newChecklist = await createChecklist(checklistData);
+      
+      // 생성 완료 후 체크리스트 상세 화면으로 직접 이동
+      Alert.alert(
+        '체크리스트 생성 완료!',
+        `"${selectedTemplate.name}" 체크리스트가 생성되었습니다.`,
+        [
+          {
+            text: '확인',
+            onPress: () => navigation.navigate('ChecklistDetail', {
+              checklistId: newChecklist.id,
+              checklistTitle: newChecklist.title
+            })
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('오류', '체크리스트 생성에 실패했습니다.');
+    }
   };
 
   const categories = Array.from(new Set(SITUATION_TEMPLATES.map(t => t.category)));
@@ -86,8 +171,53 @@ export const TemplateSelectionScreen: React.FC<TemplateSelectionScreenProps> = (
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>템플릿 선택</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('MyChecklists')}
+          >
+            <Text style={styles.navButtonText}>📋 내 리스트</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Friends')}
+          >
+            <Text style={styles.navButtonText}>👥 친구</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.title}>아맞다이거! 📋</Text>
         <Text style={styles.subtitle}>상황에 맞는 템플릿을 선택해보세요</Text>
+        <Text style={styles.welcomeText}>
+          안녕하세요, {user?.nickname || '게스트'}님! 👋
+        </Text>
+        {user?.userType === 'GUEST' && (
+          <TouchableOpacity 
+            style={styles.upgradeButton}
+            onPress={() => {
+              Alert.alert(
+                '계정으로 저장하기',
+                '체크리스트를 계속 보관하고 모든 기기에서 동기화하려면 계정을 만드세요!',
+                [
+                  { text: '나중에', style: 'cancel' },
+                  { text: '계정 만들기', onPress: () => {
+                    Alert.alert(
+                      '계정 업그레이드',
+                      '현재 게스트 상태를 등록 계정으로 업그레이드하시겠습니까?',
+                      [
+                        { text: '취소', style: 'cancel' },
+                        { text: '업그레이드', onPress: () => showUpgradeForm() }
+                      ]
+                    );
+                  }}
+                ]
+              )
+            }}
+          >
+            <Text style={styles.upgradeButtonText}>
+              💾 계정으로 저장하기
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* AI 추천 섹션 */}
@@ -189,8 +319,16 @@ export const TemplateSelectionScreen: React.FC<TemplateSelectionScreenProps> = (
             </View>
           )}
 
-          <TouchableOpacity style={styles.createButton} onPress={handleCreateChecklist}>
-            <Text style={styles.createButtonText}>이 템플릿 사용하기</Text>
+          <TouchableOpacity 
+            style={[styles.createButton, loading && styles.createButtonDisabled]} 
+            onPress={handleCreateChecklist}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createButtonText}>이 템플릿 사용하기</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -416,11 +554,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 16,
+    gap: 12,
+  },
+  navButton: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  navButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  upgradeButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  upgradeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   createButton: {
     backgroundColor: '#dc2626',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  createButtonDisabled: {
+    backgroundColor: '#9CA3AF',
   },
   createButtonText: {
     color: '#fff',

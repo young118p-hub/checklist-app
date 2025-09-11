@@ -8,298 +8,332 @@ import {
   Alert,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
-import { SituationTemplate, ChecklistItem } from '../types';
-import { generateChecklistFromTemplate } from '../lib/templates';
+import { Checklist, ChecklistItem } from '../types';
+import { useChecklistStore } from '../stores/checklistStore';
+import { useAuthStore } from '../stores/authStore';
 
 interface ChecklistDetailScreenProps {
   navigation: any;
   route: {
     params: {
-      templateId: string;
-      peopleCount: number;
+      checklistId: string;
+      checklistTitle?: string;
     };
   };
-}
-
-interface ChecklistItemWithQuantity extends ChecklistItem {
-  quantity: number;
-  completed: boolean;
 }
 
 export const ChecklistDetailScreen: React.FC<ChecklistDetailScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { templateId, peopleCount } = route.params;
-  const [checklist, setChecklist] = useState<ChecklistItemWithQuantity[]>([]);
-  const [templateName, setTemplateName] = useState('');
-  const [editingItem, setEditingItem] = useState<ChecklistItemWithQuantity | null>(null);
+  const { checklistId, checklistTitle } = route.params;
+  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [newItemTitle, setNewItemTitle] = useState('');
+  const [newItemDescription, setNewItemDescription] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState('1');
+
+  const { 
+    currentChecklist, 
+    loading, 
+    error, 
+    fetchChecklist, 
+    toggleItemComplete, 
+    addItem, 
+    updateItem, 
+    deleteItem,
+    shareChecklist
+  } = useChecklistStore();
+  
+  const { user } = useAuthStore();
+
+  // Set screen title from params or checklist data
+  useEffect(() => {
+    if (checklistTitle) {
+      navigation.setOptions({
+        title: checklistTitle
+      });
+    } else if (currentChecklist) {
+      navigation.setOptions({
+        title: currentChecklist.title
+      });
+    }
+  }, [checklistTitle, currentChecklist, navigation]);
 
   useEffect(() => {
-    const loadChecklist = async () => {
-      try {
-        const generatedChecklist = generateChecklistFromTemplate(templateId, peopleCount);
-        
-        const checklistWithStatus = generatedChecklist.items.map(item => ({
-          ...item,
-          completed: false,
-        }));
+    if (checklistId) {
+      fetchChecklist(checklistId);
+    }
+  }, [checklistId]);
 
-        setChecklist(checklistWithStatus);
-        setTemplateName(generatedChecklist.templateName);
-        
-        navigation.setOptions({
-          title: `${generatedChecklist.templateName} 체크리스트`,
-        });
-      } catch (error) {
-        console.error('체크리스트 로딩 실패:', error);
-        Alert.alert('오류', '체크리스트를 불러올 수 없습니다.');
-      }
-    };
+  // 협업 체크리스트의 경우 주기적으로 새로고침
+  useEffect(() => {
+    if (currentChecklist?.isCollaborative) {
+      const interval = setInterval(() => {
+        fetchChecklist(checklistId);
+      }, 10000); // 10초마다 새로고침
+      
+      return () => clearInterval(interval);
+    }
+  }, [currentChecklist?.isCollaborative, checklistId]);
 
-    loadChecklist();
-  }, [templateId, peopleCount, navigation]);
-
-  const toggleItemCompletion = (itemId: string) => {
-    setChecklist(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? { ...item, completed: !item.completed }
-          : item
-      )
-    );
+  const handleToggleItem = (itemId: string) => {
+    toggleItemComplete(itemId);
   };
 
-  const addCustomItem = () => {
-    setEditingItem({
-      id: `custom-${Date.now()}`,
-      title: '',
-      description: '',
-      category: 'custom',
-      quantity: 1,
-      completed: false,
-    });
-    setModalVisible(true);
-  };
-
-  const editItem = (item: ChecklistItemWithQuantity) => {
-    setEditingItem(item);
-    setModalVisible(true);
-  };
-
-  const saveItem = () => {
-    if (!editingItem || !editingItem.title.trim()) {
-      Alert.alert('알림', '항목 이름을 입력해주세요.');
+  const handleAddItem = async () => {
+    if (!newItemTitle.trim()) {
+      Alert.alert('오류', '항목 제목을 입력해주세요.');
       return;
     }
 
-    if (checklist.some(item => item.id === editingItem.id)) {
-      setChecklist(prev =>
-        prev.map(item =>
-          item.id === editingItem.id ? editingItem : item
-        )
-      );
-    } else {
-      setChecklist(prev => [...prev, editingItem]);
-    }
+    if (!currentChecklist) return;
 
-    setModalVisible(false);
-    setEditingItem(null);
+    try {
+      await addItem(currentChecklist.id, {
+        title: newItemTitle.trim(),
+        description: newItemDescription.trim(),
+        quantity: parseInt(newItemQuantity) || 1,
+        unit: '개',
+        isCompleted: false,
+        order: currentChecklist.items.length,
+      });
+
+      setNewItemTitle('');
+      setNewItemDescription('');
+      setNewItemQuantity('1');
+      setModalVisible(false);
+    } catch (error) {
+      Alert.alert('오류', '항목 추가에 실패했습니다.');
+    }
   };
 
-  const deleteItem = (itemId: string) => {
+  const handleDeleteItem = (itemId: string) => {
     Alert.alert(
-      '삭제 확인',
+      '항목 삭제',
       '이 항목을 삭제하시겠습니까?',
       [
         { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
+        { 
+          text: '삭제', 
           style: 'destructive',
-          onPress: () => {
-            setChecklist(prev => prev.filter(item => item.id !== itemId));
-          },
-        },
+          onPress: () => deleteItem(itemId)
+        }
       ]
     );
   };
 
-  const getCompletionProgress = () => {
-    const completed = checklist.filter(item => item.completed).length;
-    const total = checklist.length;
-    return { completed, total, percentage: total > 0 ? (completed / total) * 100 : 0 };
+  const handleShareChecklist = async () => {
+    if (!currentChecklist || !user) return;
+
+    try {
+      const { shareCode } = await shareChecklist(currentChecklist.id);
+      Alert.alert(
+        '공유 코드 생성 완료',
+        `공유 코드: ${shareCode}\n\n이 코드를 친구에게 알려주세요!`,
+        [
+          { text: '확인', style: 'default' }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('오류', '체크리스트 공유에 실패했습니다.');
+    }
   };
 
-  const progress = getCompletionProgress();
-  const categories = [...new Set(checklist.map(item => item.category))];
+  const calculateProgress = () => {
+    if (!currentChecklist || currentChecklist.items.length === 0) return 0;
+    const completedItems = currentChecklist.items.filter(item => item.isCompleted).length;
+    return (completedItems / currentChecklist.items.length) * 100;
+  };
+
+  const renderAddItemModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>새 항목 추가</Text>
+          
+          <TextInput
+            style={styles.modalInput}
+            placeholder="항목 제목 *"
+            value={newItemTitle}
+            onChangeText={setNewItemTitle}
+            placeholderTextColor="#9CA3AF"
+          />
+          
+          <TextInput
+            style={styles.modalInput}
+            placeholder="설명 (선택)"
+            value={newItemDescription}
+            onChangeText={setNewItemDescription}
+            placeholderTextColor="#9CA3AF"
+            multiline
+          />
+          
+          <TextInput
+            style={styles.modalInput}
+            placeholder="수량"
+            value={newItemQuantity}
+            onChangeText={setNewItemQuantity}
+            keyboardType="numeric"
+            placeholderTextColor="#9CA3AF"
+          />
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>취소</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.addButton]}
+              onPress={handleAddItem}
+            >
+              <Text style={styles.addButtonText}>추가</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (loading && !currentChecklist) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#dc2626" />
+        <Text style={styles.loadingText}>체크리스트를 불러오는 중...</Text>
+      </View>
+    );
+  }
+
+  if (error || !currentChecklist) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>
+          {error || '체크리스트를 찾을 수 없습니다.'}
+        </Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>돌아가기</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const progress = calculateProgress();
+  const completedItems = currentChecklist.items.filter(item => item.isCompleted).length;
 
   return (
     <View style={styles.container}>
-      {/* 진행률 표시 */}
-      <View style={styles.progressSection}>
-        <Text style={styles.progressTitle}>진행률</Text>
-        <View style={styles.progressBar}>
-          <View 
-            style={[styles.progressFill, { width: `${progress.percentage}%` }]} 
-          />
+      {/* Header with progress */}
+      <View style={styles.header}>
+        <View style={styles.headerActions}>
+          {currentChecklist.userId === user?.id && (
+            <TouchableOpacity 
+              style={styles.shareButton}
+              onPress={handleShareChecklist}
+            >
+              <Text style={styles.shareButtonText}>공유</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        <Text style={styles.progressText}>
-          {progress.completed}/{progress.total} 완료 ({Math.round(progress.percentage)}%)
-        </Text>
-      </View>
 
-      <ScrollView style={styles.checklistContainer}>
-        {categories.map(category => (
-          <View key={category} style={styles.categorySection}>
-            <Text style={styles.categoryTitle}>
-              {category === 'custom' ? '추가 항목' : category}
-            </Text>
-            
-            {checklist
-              .filter(item => item.category === category)
-              .map(item => (
-                <View key={item.id} style={styles.checklistItem}>
-                  <TouchableOpacity
-                    style={styles.checkboxContainer}
-                    onPress={() => toggleItemCompletion(item.id)}
-                  >
-                    <View style={[
-                      styles.checkbox,
-                      item.completed && styles.checkboxChecked
-                    ]}>
-                      {item.completed && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.itemContent}
-                    onPress={() => editItem(item)}
-                  >
-                    <Text style={[
-                      styles.itemTitle,
-                      item.completed && styles.itemTitleCompleted
-                    ]}>
-                      {item.title}
+        <Text style={styles.title}>{currentChecklist.title}</Text>
+        {currentChecklist.description && (
+          <Text style={styles.description}>{currentChecklist.description}</Text>
+        )}
+        
+        <View style={styles.progressSection}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
+          <Text style={styles.progressText}>
+            {completedItems}/{currentChecklist.items.length} 완료 ({Math.round(progress)}%)
+          </Text>
+        </View>
+
+        {/* Participants (if collaborative) */}
+        {currentChecklist.isCollaborative && currentChecklist.participants && (
+          <View style={styles.participantsSection}>
+            <Text style={styles.participantsTitle}>참여자</Text>
+            <View style={styles.participantsList}>
+              {currentChecklist.participants.map((participant) => (
+                <View key={participant.id} style={styles.participantItem}>
+                  <View style={[styles.participantAvatar, { backgroundColor: participant.color }]}>
+                    <Text style={styles.participantText}>
+                      {participant.nickname.charAt(0)}
                     </Text>
-                    
-                    {item.quantity > 1 && (
-                      <Text style={styles.quantityBadge}>
-                        {item.quantity}개
-                      </Text>
-                    )}
-                    
-                    {item.description && (
-                      <Text style={styles.itemDescription}>
-                        {item.description}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  
-                  {item.category === 'custom' && (
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => deleteItem(item.id)}
-                    >
-                      <Text style={styles.deleteButtonText}>🗑</Text>
-                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.participantName}>{participant.nickname}</Text>
+                  {participant.role === 'OWNER' && (
+                    <Text style={styles.ownerBadge}>👑</Text>
                   )}
                 </View>
               ))}
+            </View>
           </View>
+        )}
+      </View>
+
+      {/* Items list */}
+      <ScrollView style={styles.itemsList} showsVerticalScrollIndicator={false}>
+        {currentChecklist.items.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[styles.itemCard, item.isCompleted && styles.completedItem]}
+            onPress={() => handleToggleItem(item.id)}
+          >
+            <View style={styles.itemLeft}>
+              <View style={[styles.checkbox, item.isCompleted && styles.checkedBox]}>
+                {item.isCompleted && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              
+              <View style={styles.itemContent}>
+                <Text style={[styles.itemTitle, item.isCompleted && styles.completedText]}>
+                  {item.title}
+                </Text>
+                {item.description && (
+                  <Text style={[styles.itemDescription, item.isCompleted && styles.completedText]}>
+                    {item.description}
+                  </Text>
+                )}
+                {item.quantity && item.quantity > 1 && (
+                  <Text style={styles.itemQuantity}>
+                    수량: {item.quantity}{item.unit}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.deleteButton}
+              onPress={() => handleDeleteItem(item.id)}
+            >
+              <Text style={styles.deleteButtonText}>×</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* 하단 버튼들 */}
-      <View style={styles.bottomButtons}>
-        <TouchableOpacity style={styles.addButton} onPress={addCustomItem}>
-          <Text style={styles.addButtonText}>+ 항목 추가</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.completeButton, progress.percentage === 100 && styles.completeButtonActive]}
-          onPress={() => {
-            if (progress.percentage === 100) {
-              Alert.alert('완료!', '모든 항목을 체크하셨습니다! 🎉');
-            } else {
-              Alert.alert('알림', `아직 ${progress.total - progress.completed}개 항목이 남아있습니다.`);
-            }
-          }}
-        >
-          <Text style={styles.completeButtonText}>
-            {progress.percentage === 100 ? '모두 완료! 🎉' : '완료 확인'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 편집 모달 */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+      {/* Add item button */}
+      <TouchableOpacity 
+        style={styles.addItemButton}
+        onPress={() => setModalVisible(true)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem?.category === 'custom' ? '항목 추가/편집' : '항목 편집'}
-            </Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="항목 이름"
-              value={editingItem?.title || ''}
-              onChangeText={(text) => 
-                setEditingItem(prev => prev ? { ...prev, title: text } : null)
-              }
-            />
-            
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="설명 (선택사항)"
-              multiline
-              numberOfLines={3}
-              value={editingItem?.description || ''}
-              onChangeText={(text) => 
-                setEditingItem(prev => prev ? { ...prev, description: text } : null)
-              }
-            />
-            
-            <View style={styles.quantityContainer}>
-              <Text style={styles.quantityLabel}>수량:</Text>
-              <TextInput
-                style={styles.quantityInput}
-                keyboardType="numeric"
-                value={editingItem?.quantity.toString() || '1'}
-                onChangeText={(text) => {
-                  const quantity = parseInt(text) || 1;
-                  setEditingItem(prev => prev ? { ...prev, quantity } : null);
-                }}
-              />
-            </View>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  setEditingItem(null);
-                }}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={saveItem}
-              >
-                <Text style={styles.saveButtonText}>저장</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <Text style={styles.addItemButtonText}>+ 항목 추가</Text>
+      </TouchableOpacity>
+
+      {renderAddItemModal()}
     </View>
   );
 };
@@ -307,232 +341,275 @@ export const ChecklistDetailScreen: React.FC<ChecklistDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F9FAFB',
   },
-  progressSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginBottom: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
-  progressTitle: {
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+  },
+  shareButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  shareButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
     marginBottom: 8,
+  },
+  description: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+  progressSection: {
+    marginBottom: 16,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#E5E7EB',
     borderRadius: 4,
-    overflow: 'hidden',
+    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#dc2626',
+    backgroundColor: '#10B981',
     borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 8,
+    color: '#6B7280',
     textAlign: 'center',
   },
-  checklistContainer: {
-    flex: 1,
+  participantsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  categorySection: {
-    marginBottom: 16,
-  },
-  categoryTitle: {
-    fontSize: 18,
+  participantsTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#111827',
     marginBottom: 8,
-    paddingHorizontal: 16,
   },
-  checklistItem: {
+  participantsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  participantItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    gap: 6,
+  },
+  participantAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  participantText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  participantName: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  ownerBadge: {
+    fontSize: 12,
+  },
+  itemsList: {
+    flex: 1,
+    padding: 16,
+  },
+  itemCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
+    padding: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
-  checkboxContainer: {
-    marginRight: 12,
+  completedItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  itemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   checkbox: {
     width: 24,
     height: 24,
-    borderWidth: 2,
-    borderColor: '#ddd',
     borderRadius: 4,
-    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    marginRight: 12,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#dc2626',
-    borderColor: '#dc2626',
+  checkedBox: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
   },
   checkmark: {
-    color: '#fff',
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: 'bold',
-    fontSize: 16,
   },
   itemContent: {
     flex: 1,
   },
   itemTitle: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '500',
-  },
-  itemTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  quantityBadge: {
-    fontSize: 12,
-    color: '#666',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
+    color: '#111827',
+    marginBottom: 4,
   },
   itemDescription: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  itemQuantity: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    color: '#9CA3AF',
   },
   deleteButton: {
     padding: 8,
   },
   deleteButtonText: {
+    color: '#EF4444',
     fontSize: 18,
-  },
-  bottomButtons: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  addButton: {
-    flex: 1,
-    backgroundColor: '#6b7280',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
     fontWeight: 'bold',
   },
-  completeButton: {
-    flex: 1,
-    backgroundColor: '#9ca3af',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  completeButtonActive: {
+  addItemButton: {
     backgroundColor: '#dc2626',
+    margin: 16,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
-  completeButtonText: {
-    color: '#fff',
+  addItemButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    margin: 20,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 20,
+    padding: 24,
     width: '90%',
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#111827',
     marginBottom: 16,
     textAlign: 'center',
   },
-  input: {
+  modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
+    marginBottom: 16,
     fontSize: 16,
-    marginBottom: 12,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  quantityLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginRight: 12,
-  },
-  quantityInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    width: 80,
-    textAlign: 'center',
   },
   modalButtons: {
     flexDirection: 'row',
+    gap: 12,
   },
   modalButton: {
     flex: 1,
-    padding: 14,
+    padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
+    backgroundColor: '#F3F4F6',
   },
   cancelButtonText: {
-    color: '#374151',
+    color: '#6B7280',
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  saveButton: {
+  addButton: {
     backgroundColor: '#dc2626',
-    marginLeft: 8,
   },
-  saveButtonText: {
-    color: '#fff',
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

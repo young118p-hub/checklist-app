@@ -1,10 +1,13 @@
 export interface User {
   id: string
   email: string
+  nickname: string
   name?: string
   avatar?: string
+  friendCode: string
+  userType: 'GUEST' | 'REGISTERED'
   createdAt: Date
-  updatedAt: Date
+  updatedAt?: Date
 }
 
 export interface Category {
@@ -21,17 +24,20 @@ export interface Checklist {
   description?: string
   isTemplate: boolean
   isPublic: boolean
+  isCollaborative?: boolean
+  shareCode?: string
   peopleCount?: number
   createdAt: Date
   updatedAt: Date
   userId: string
   categoryId?: string
-  user: User
+  user?: User
   category?: Category
   items: ChecklistItem[]
-  likes: ChecklistLike[]
-  reviews: Review[]
-  comments: Comment[]
+  participants?: CollaborativeParticipant[]
+  likes?: ChecklistLike[]
+  reviews?: Review[]
+  comments?: Comment[]
   _count?: {
     likes: number
     reviews: number
@@ -48,6 +54,8 @@ export interface ChecklistItem {
   isCompleted: boolean
   order: number
   checklistId: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface ChecklistLike {
@@ -82,8 +90,10 @@ export interface CreateChecklistData {
   description?: string
   isTemplate?: boolean
   isPublic?: boolean
+  isCollaborative?: boolean
   peopleCount?: number
   categoryId?: string
+  userId?: string
   items: CreateChecklistItemData[]
 }
 
@@ -118,4 +128,64 @@ export interface TemplateItem {
   baseQuantity?: number
   unit?: string
   multiplier?: number
+}
+
+// Collaboration types
+export interface CollaborativeParticipant {
+  id: string
+  userId: string
+  nickname: string
+  color: string
+  role: 'OWNER' | 'MEMBER'
+  isOnline: boolean
+  joinedAt: Date
+}
+
+export interface ShareSession {
+  id: string
+  checklistId: string
+  shareCode: string
+  isActive: boolean
+  createdAt: Date
+  expiresAt?: Date
+}
+
+// Friend system types
+export interface Friend {
+  id: string
+  userId: string
+  friendId: string
+  nickname: string
+  name?: string
+  avatar?: string
+  userType: 'GUEST' | 'REGISTERED'
+  isOnline: boolean
+  friendshipStatus: 'PENDING' | 'ACCEPTED' | 'SENT'
+  addedAt: Date
+}
+
+export interface FriendRequest {
+  id: string
+  senderId: string
+  receiverId: string
+  senderNickname: string
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  sentAt: Date
+  respondedAt?: Date
+}
+
+export interface RecentCollaboration {
+  id: string
+  checklistId: string
+  title: string
+  shareCode: string
+  lastActiveAt: Date
+  totalItems: number
+  completedItems: number
+  participants: Array<{
+    nickname: string
+    color: string
+    isOnline: boolean
+  }>
+  role: 'OWNER' | 'MEMBER'
 }
